@@ -6,5 +6,14 @@ module.exports = {
     hardhat: {
       chainId: 1337
     }
+  },
+  solidity: {
+    version: "0.8.23",      // match your contracts
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
   }
-}
+};
