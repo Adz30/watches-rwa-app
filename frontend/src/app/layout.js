@@ -1,18 +1,14 @@
-// src/app/layout.js
 import "./globals.css";
-import { Web3Provider } from "@/lib/WagmiProvider";
 
 export const metadata = {
-  title: "Local Wallet DApp",
-  description: "Test DApp with RainbowKit & Wagmi",
+  title: "WatchDeFi - NFT Lending & AMM",
+  description: "Luxury watch NFT lending and fractionalized trading platform",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
-        <Web3Provider>{children}</Web3Provider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
