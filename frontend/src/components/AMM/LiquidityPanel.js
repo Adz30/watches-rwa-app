@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useAMM } from '../../hooks/useAMM';
+import { useBalances } from '../../hooks/useBalances';
 import { PlusIcon, MinusIcon } from '@heroicons/react/24/outline';
+import TokenInput from '../UI/TokenInput';
 
 export default function LiquidityPanel({ selectedPool, onPoolSelect }) {
   const { ammState, addLiquidity, removeLiquidity } = useAMM();
+  const { balances } = useBalances();
   const userState = useSelector((state) => state.user);
   
   const [mode, setMode] = useState('add'); // 'add' or 'remove'
@@ -68,8 +71,8 @@ export default function LiquidityPanel({ selectedPool, onPoolSelect }) {
   };
 
   const userPosition = getUserPosition();
-  const usdcBalance = userState.balances.usdc;
-  const fractionBalance = userState.balances.fractionTokens[selectedPool?.address] || '0';
+  const usdcBalance = balances.usdc;
+  const fractionBalance = balances.fractionTokens[selectedPool?.fractionTokenAddress] || '0';
 
   return (
     <div className="max-w-md mx-auto">
@@ -144,53 +147,21 @@ export default function LiquidityPanel({ selectedPool, onPoolSelect }) {
           {mode === 'add' ? (
             /* Add Liquidity Form */
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  USDC Amount
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={usdcAmount}
-                    onChange={(e) => setUsdcAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <button
-                    onClick={() => setUsdcAmount(usdcBalance)}
-                    className="absolute right-2 top-2 text-xs text-blue-600 hover:text-blue-800"
-                  >
-                    MAX
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Balance: {parseFloat(usdcBalance).toFixed(4)} USDC
-                </p>
-              </div>
+              <TokenInput
+                label="USDC Amount"
+                value={usdcAmount}
+                onChange={setUsdcAmount}
+                token="USDC"
+                balance={usdcBalance}
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  W{selectedPool.watchId} Amount
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={fractionAmount}
-                    onChange={(e) => setFractionAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <button
-                    onClick={() => setFractionAmount(fractionBalance)}
-                    className="absolute right-2 top-2 text-xs text-blue-600 hover:text-blue-800"
-                  >
-                    MAX
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Balance: {parseFloat(fractionBalance).toFixed(4)} W{selectedPool.watchId}
-                </p>
-              </div>
+              <TokenInput
+                label={`W${selectedPool.watchId} Amount`}
+                value={fractionAmount}
+                onChange={setFractionAmount}
+                token={`W${selectedPool.watchId}`}
+                balance={fractionBalance}
+              />
 
               {/* Pool Info */}
               <div className="bg-gray-50 rounded-lg p-3">
@@ -222,29 +193,13 @@ export default function LiquidityPanel({ selectedPool, onPoolSelect }) {
           ) : (
             /* Remove Liquidity Form */
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  LP Shares to Remove
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={shareAmount}
-                    onChange={(e) => setShareAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <button
-                    onClick={() => setShareAmount(userPosition?.shares || '0')}
-                    className="absolute right-2 top-2 text-xs text-blue-600 hover:text-blue-800"
-                  >
-                    MAX
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Available: {userPosition ? parseFloat(userPosition.shares).toFixed(4) : '0.00'} shares
-                </p>
-              </div>
+              <TokenInput
+                label="LP Shares to Remove"
+                value={shareAmount}
+                onChange={setShareAmount}
+                token="Shares"
+                balance={userPosition?.shares || '0'}
+              />
 
               {/* Removal Preview */}
               {shareAmount && parseFloat(shareAmount) > 0 && selectedPool.totalShares > 0 && (

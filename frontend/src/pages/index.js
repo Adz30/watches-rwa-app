@@ -8,9 +8,13 @@ import {
   CurrencyDollarIcon, 
   ArrowsRightLeftIcon, 
   PhotoIcon,
-  ChartBarIcon 
+  ChartBarIcon,
+  PlusIcon 
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import StatsCard from '../components/Dashboard/StatsCard';
+import QuickActionCard from '../components/Dashboard/QuickActionCard';
+import TransactionHistory from '../components/Dashboard/TransactionHistory';
 
 export default function Dashboard() {
   const { address, isConnected } = useAccount();
@@ -57,28 +61,28 @@ export default function Dashboard() {
 
   const dashboardStats = [
     {
-      name: 'Total Portfolio Value',
+      title: 'Total Portfolio Value',
       value: `${(parseFloat(lendingState.lenderInfo.usdcValue) + parseFloat(userState.balances.usdc)).toFixed(2)} USDC`,
       icon: CurrencyDollarIcon,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
     },
     {
-      name: 'Active Loans',
+      title: 'Active Loans',
       value: lendingState.loans.active.length,
       icon: ChartBarIcon,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
     },
     {
-      name: 'LP Positions',
+      title: 'LP Positions',
       value: ammState.userPositions.data.length,
       icon: ArrowsRightLeftIcon,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
     },
     {
-      name: 'Owned NFTs',
+      title: 'Owned NFTs',
       value: nftState.userNFTs.data.length,
       icon: PhotoIcon,
       color: 'text-purple-600',
@@ -88,28 +92,28 @@ export default function Dashboard() {
 
   const quickActions = [
     {
-      name: 'Lend USDC',
+      title: 'Lend USDC',
       description: 'Deposit USDC to earn interest from borrowers',
       href: '/lending',
       icon: CurrencyDollarIcon,
       color: 'bg-green-600 hover:bg-green-700',
     },
     {
-      name: 'Borrow Against NFT',
+      title: 'Borrow Against NFT',
       description: 'Use your NFTs as collateral to borrow USDC',
       href: '/lending',
       icon: PhotoIcon,
       color: 'bg-orange-600 hover:bg-orange-700',
     },
     {
-      name: 'Trade Fractions',
+      title: 'Trade Fractions',
       description: 'Swap between USDC and fractionalized watch tokens',
       href: '/amm',
       icon: ArrowsRightLeftIcon,
       color: 'bg-blue-600 hover:bg-blue-700',
     },
     {
-      name: 'Provide Liquidity',
+      title: 'Provide Liquidity',
       description: 'Add liquidity to AMM pools and earn trading fees',
       href: '/amm',
       icon: PlusIcon,
@@ -140,20 +144,7 @@ export default function Dashboard() {
       {/* Dashboard Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {dashboardStats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.name} className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center">
-                <div className={`flex-shrink-0 p-3 rounded-lg ${stat.bgColor}`}>
-                  <Icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">{stat.name}</p>
-                  <p className="text-xl font-semibold text-gray-900">{stat.value}</p>
-                </div>
-              </div>
-            </div>
-          );
+          return <StatsCard key={stat.title} {...stat} />;
         })}
       </div>
 
@@ -162,80 +153,13 @@ export default function Dashboard() {
         <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Link
-                key={action.name}
-                href={action.href}
-                className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow border border-gray-200 group"
-              >
-                <div className="flex items-start space-x-4">
-                  <div className={`p-3 rounded-lg ${action.color} transition-colors`}>
-                    <Icon className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                      {action.name}
-                    </h3>
-                    <p className="text-gray-600 mt-1">{action.description}</p>
-                  </div>
-                </div>
-              </Link>
-            );
+            return <QuickActionCard key={action.title} {...action} />;
           })}
         </div>
       </div>
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Lending Activity */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Lending Activity</h3>
-          <div className="space-y-3">
-            {lendingState.transactions.completed.slice(0, 3).map((tx, index) => (
-              <div key={index} className="flex items-center justify-between py-2">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-2 h-2 rounded-full ${
-                    tx.type === 'deposit' ? 'bg-green-500' : 
-                    tx.type === 'borrow' ? 'bg-orange-500' : 'bg-red-500'
-                  }`}></div>
-                  <span className="text-sm font-medium capitalize">{tx.type}</span>
-                </div>
-                <span className="text-sm text-gray-600">
-                  {tx.data?.amount} {tx.data?.token || 'USDC'}
-                </span>
-              </div>
-            ))}
-            {lendingState.transactions.completed.length === 0 && (
-              <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
-            )}
-          </div>
-        </div>
-
-        {/* Recent AMM Activity */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent AMM Activity</h3>
-          <div className="space-y-3">
-            {ammState.transactions.completed.slice(0, 3).map((tx, index) => (
-              <div key={index} className="flex items-center justify-between py-2">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-2 h-2 rounded-full ${
-                    tx.type === 'swap' ? 'bg-blue-500' : 
-                    tx.type === 'add_liquidity' ? 'bg-green-500' : 'bg-red-500'
-                  }`}></div>
-                  <span className="text-sm font-medium capitalize">{tx.type.replace('_', ' ')}</span>
-                </div>
-                <span className="text-sm text-gray-600">
-                  {tx.data?.from} → {tx.data?.to}
-                </span>
-              </div>
-            ))}
-            {ammState.transactions.completed.length === 0 && (
-              <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
-            )}
-          </div>
-        </div>
-      </div>
+      <TransactionHistory title="Recent Activity" maxItems={8} />
     </div>
   );
 }

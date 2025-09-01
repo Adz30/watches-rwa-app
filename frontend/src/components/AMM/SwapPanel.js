@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useAMM } from '../../hooks/useAMM';
+import { useBalances } from '../../hooks/useBalances';
 import { ArrowsUpDownIcon, CogIcon } from '@heroicons/react/24/outline';
+import TokenInput from '../UI/TokenInput';
+import LoadingSpinner from '../UI/LoadingSpinner';
 
 export default function SwapPanel({ selectedPool, onPoolSelect }) {
   const { ammState, swapUSDCForFraction, swapFractionForUSDC, getSwapQuote } = useAMM();
+  const { balances, fetchFractionBalance } = useBalances();
   const userState = useSelector((state) => state.user);
   
   const [fromToken, setFromToken] = useState('usdc');
@@ -21,6 +25,17 @@ export default function SwapPanel({ selectedPool, onPoolSelect }) {
       onPoolSelect?.(ammState.pools.data[0]);
     }
   }, [selectedPool, ammState.pools.data, onPoolSelect]);
+
+  // Fetch fraction token balance when pool changes
+  useEffect(() => {
+    const loadFractionBalance = async () => {
+      if (selectedPool && contracts?.getAMMPool) {
+        const fractionTokenAddress = await contracts.getAMMPool(selectedPool.address).fractionToken();
+        await fetchFractionBalance(fractionTokenAddress);
+      }
+    };
+    loadFractionBalance();
+  }, [selectedPool, fetchFractionBalance]);
 
   // Get quote when amount changes
   useEffect(() => {
@@ -80,9 +95,13 @@ export default function SwapPanel({ selectedPool, onPoolSelect }) {
 
   const getTokenBalance = (token) => {
     if (token === 'usdc') {
-      return userState.balances.usdc;
+      return balances.usdc;
     }
-    // For fraction tokens, you'd need to track balances per pool
+    // Get fraction token balance from balances
+    if (selectedPool) {
+      // You'd need the fraction token address here
+      return balances.fractionTokens[selectedPool.fractionTokenAddress] || '0';
+    }
     return '0';
   };
 
@@ -127,32 +146,14 @@ export default function SwapPanel({ selectedPool, onPoolSelect }) {
 
           {/* From Token */}
           <div className="space-y-4">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">From</span>
-                <span className="text-xs text-gray-500">
-                  Balance: {parseFloat(getTokenBalance(fromToken)).toFixed(4)} {getTokenSymbol(fromToken)}
-                </span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <input
-                  type="number"
-                  value={fromAmount}
-                  onChange={(e) => setFromAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="flex-1 bg-transparent text-xl font-semibold text-gray-900 placeholder-gray-400 border-none outline-none"
-                />
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium text-gray-900">{getTokenSymbol(fromToken)}</span>
-                  <button
-                    onClick={() => setFromAmount(getTokenBalance(fromToken))}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    MAX
-                  </button>
-                </div>
-              </div>
-            </div>
+            <TokenInput
+              label="From"
+              value={fromAmount}
+              onChange={setFromAmount}
+              token={getTokenSymbol(fromToken)}
+              balance={getTokenBalance(fromToken)}
+              placeholder="0.00"
+            />
 
             {/* Flip Button */}
             <div className="flex justify-center">
@@ -165,23 +166,21 @@ export default function SwapPanel({ selectedPool, onPoolSelect }) {
             </div>
 
             {/* To Token */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">To</span>
-                <span className="text-xs text-gray-500">
-                  Balance: {parseFloat(getTokenBalance(toToken)).toFixed(4)} {getTokenSymbol(toToken)}
-                </span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <input
-                  type="number"
-                  value={quoteLoading ? 'Loading...' : toAmount}
-                  readOnly
-                  placeholder="0.00"
-                  className="flex-1 bg-transparent text-xl font-semibold text-gray-900 placeholder-gray-400 border-none outline-none"
-                />
-                <span className="font-medium text-gray-900">{getTokenSymbol(toToken)}</span>
-              </div>
+            <div className="relative">
+              <TokenInput
+                label="To"
+                value={quoteLoading ? '' : toAmount}
+                token={getTokenSymbol(toToken)}
+                balance={getTokenBalance(toToken)}
+                placeholder={quoteLoading ? "Getting quote..." : "0.00"}
+                disabled={true}
+                showMax={false}
+              />
+              {quoteLoading && (
+                <div className="absolute right-4 top-12 flex items-center">
+                  <LoadingSpinner size="sm" />
+                </div>
+              )}
             </div>
 
             {/* Swap Details */}

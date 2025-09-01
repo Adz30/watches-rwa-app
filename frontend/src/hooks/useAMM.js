@@ -108,24 +108,23 @@ export function useAMM() {
     if (!contracts) return;
 
     try {
-      const poolContract = contracts.getAMMPool(poolAddress);
+      const signedContracts = await contracts.withSigner();
+      const poolContract = signedContracts.getAMMPool(poolAddress);
       const fractionAmountWei = ethers.parseUnits(fractionAmount, 18);
       const usdcAmountWei = ethers.parseUnits(usdcAmount, 18);
 
-      // Get fraction token address from pool events or factory
-      // For now, we'll assume it's available
+      // Get fraction token address from pool
+      const fractionTokenAddress = await contracts.getAMMPool(poolAddress).fractionToken();
       
       // Approve tokens if needed
       if (fractionAmount > 0) {
-        // You'll need to get the fraction token address
-        // const fractionTokenAddress = await poolContract.fractionToken();
-        // const fractionToken = contracts.getFractionToken(fractionTokenAddress);
-        // const approveTx = await fractionToken.approve(poolAddress, fractionAmountWei);
-        // await approveTx.wait();
+        const fractionToken = signedContracts.getFractionToken(fractionTokenAddress);
+        const approveTx = await fractionToken.approve(poolAddress, fractionAmountWei);
+        await approveTx.wait();
       }
 
       if (usdcAmount > 0) {
-        const approveTx = await contracts.usdc.approve(poolAddress, usdcAmountWei);
+        const approveTx = await signedContracts.usdc.approve(poolAddress, usdcAmountWei);
         
         dispatch(addTransaction({
           hash: approveTx.hash,
@@ -176,7 +175,8 @@ export function useAMM() {
     if (!contracts) return;
 
     try {
-      const poolContract = contracts.getAMMPool(poolAddress);
+      const signedContracts = await contracts.withSigner();
+      const poolContract = signedContracts.getAMMPool(poolAddress);
       const shareAmountWei = ethers.parseUnits(shareAmount, 18);
 
       const tx = await poolContract.removeLiquidity(shareAmountWei);
@@ -212,12 +212,13 @@ export function useAMM() {
     if (!contracts) return;
 
     try {
-      const poolContract = contracts.getAMMPool(poolAddress);
+      const signedContracts = await contracts.withSigner();
+      const poolContract = signedContracts.getAMMPool(poolAddress);
       const usdcAmountWei = ethers.parseUnits(usdcAmount, 18);
       const minFractionOutWei = ethers.parseUnits(minFractionOut, 18);
 
       // Approve USDC
-      const approveTx = await contracts.usdc.approve(poolAddress, usdcAmountWei);
+      const approveTx = await signedContracts.usdc.approve(poolAddress, usdcAmountWei);
       await approveTx.wait();
 
       // Execute swap
@@ -253,15 +254,16 @@ export function useAMM() {
     if (!contracts) return;
 
     try {
-      const poolContract = contracts.getAMMPool(poolAddress);
+      const signedContracts = await contracts.withSigner();
+      const poolContract = signedContracts.getAMMPool(poolAddress);
       const fractionAmountWei = ethers.parseUnits(fractionAmount, 18);
       const minUsdcOutWei = ethers.parseUnits(minUsdcOut, 18);
 
-      // You'll need to approve the fraction token
-      // const fractionTokenAddress = await poolContract.fractionToken();
-      // const fractionToken = contracts.getFractionToken(fractionTokenAddress);
-      // const approveTx = await fractionToken.approve(poolAddress, fractionAmountWei);
-      // await approveTx.wait();
+      // Approve the fraction token
+      const fractionTokenAddress = await contracts.getAMMPool(poolAddress).fractionToken();
+      const fractionToken = signedContracts.getFractionToken(fractionTokenAddress);
+      const approveTx = await fractionToken.approve(poolAddress, fractionAmountWei);
+      await approveTx.wait();
 
       // Execute swap
       const tx = await poolContract.swapFractionForUSDC(fractionAmountWei, minUsdcOutWei);

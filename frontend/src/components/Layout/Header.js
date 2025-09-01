@@ -10,6 +10,7 @@ export default function Header() {
     { name: 'Lending', href: '/lending' },
     { name: 'AMM', href: '/amm' },
     { name: 'NFTs', href: '/nfts' },
+    { name: 'Setup', href: '/setup' },
   ];
 
   return (

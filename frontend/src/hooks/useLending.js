@@ -51,14 +51,15 @@ export function useLending() {
 
   // Deposit USDC into lending pool
   const depositUSDC = useCallback(async (amount) => {
-    if (!contracts?.nftCollateralLending || !contracts?.usdc) return;
+    if (!contracts) return;
 
     try {
+      const signedContracts = await contracts.withSigner();
       const amountWei = ethers.parseUnits(amount, 18);
       
       // First approve USDC
-      const approveTx = await contracts.usdc.approve(
-        contracts.nftCollateralLending.target,
+      const approveTx = await signedContracts.usdc.approve(
+        await signedContracts.nftCollateralLending.getAddress(),
         amountWei
       );
       
@@ -77,7 +78,7 @@ export function useLending() {
       }));
 
       // Then deposit
-      const depositTx = await contracts.nftCollateralLending.deposit(amountWei);
+      const depositTx = await signedContracts.nftCollateralLending.deposit(amountWei);
       
       dispatch(addTransaction({
         hash: depositTx.hash,
@@ -107,11 +108,12 @@ export function useLending() {
 
   // Withdraw USDC from lending pool
   const withdrawUSDC = useCallback(async (shareAmount) => {
-    if (!contracts?.nftCollateralLending) return;
+    if (!contracts) return;
 
     try {
+      const signedContracts = await contracts.withSigner();
       const shareAmountWei = ethers.parseUnits(shareAmount, 18);
-      const tx = await contracts.nftCollateralLending.withdraw(shareAmountWei);
+      const tx = await signedContracts.nftCollateralLending.withdraw(shareAmountWei);
       
       dispatch(addTransaction({
         hash: tx.hash,
@@ -141,12 +143,13 @@ export function useLending() {
 
   // Deposit NFT and borrow USDC
   const depositNFTAndBorrow = useCallback(async (nftId) => {
-    if (!contracts?.nftCollateralLending || !contracts?.watchRegistry) return;
+    if (!contracts) return;
 
     try {
+      const signedContracts = await contracts.withSigner();
       // First approve NFT
-      const approveTx = await contracts.watchRegistry.approve(
-        contracts.nftCollateralLending.target,
+      const approveTx = await signedContracts.watchRegistry.approve(
+        await signedContracts.nftCollateralLending.getAddress(),
         nftId
       );
       
@@ -165,7 +168,7 @@ export function useLending() {
       }));
 
       // Then deposit and borrow
-      const borrowTx = await contracts.nftCollateralLending.depositNFTAndBorrow(nftId);
+      const borrowTx = await signedContracts.nftCollateralLending.depositNFTAndBorrow(nftId);
       
       dispatch(addTransaction({
         hash: borrowTx.hash,
@@ -203,9 +206,10 @@ export function useLending() {
 
   // Repay loan
   const repayLoanFn = useCallback(async (nftId) => {
-    if (!contracts?.nftCollateralLending || !contracts?.usdc) return;
+    if (!contracts) return;
 
     try {
+      const signedContracts = await contracts.withSigner();
       // Get loan info to calculate repayment amount
       const [borrower, borrowedAmount, repaid] = await contracts.nftCollateralLending.getLoan(nftId);
       
@@ -218,8 +222,8 @@ export function useLending() {
       const repaymentAmount = borrowedAmount + interest;
 
       // First approve USDC
-      const approveTx = await contracts.usdc.approve(
-        contracts.nftCollateralLending.target,
+      const approveTx = await signedContracts.usdc.approve(
+        await signedContracts.nftCollateralLending.getAddress(),
         repaymentAmount
       );
       
@@ -238,7 +242,7 @@ export function useLending() {
       }));
 
       // Then repay
-      const repayTx = await contracts.nftCollateralLending.repayLoan(nftId);
+      const repayTx = await signedContracts.nftCollateralLending.repayLoan(nftId);
       
       dispatch(addTransaction({
         hash: repayTx.hash,
