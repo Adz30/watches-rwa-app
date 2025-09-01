@@ -67,12 +67,16 @@ describe("WatchFraction", () => {
     describe("Success", () => {
       beforeEach(async () => {
         amount = tokens(100);
-        transaction = await fraction.connect(deployer).transfer(alice.address, amount);
+        transaction = await fraction
+          .connect(deployer)
+          .transfer(alice.address, amount);
         await transaction.wait();
       });
 
       it("transfers balances", async () => {
-        expect(await fraction.balanceOf(deployer.address)).to.equal(tokens(900));
+        expect(await fraction.balanceOf(deployer.address)).to.equal(
+          tokens(900)
+        );
         expect(await fraction.balanceOf(alice.address)).to.equal(amount);
       });
 
@@ -94,10 +98,9 @@ describe("WatchFraction", () => {
       it("rejects invalid recipient", async () => {
         const amount = tokens(100);
         await expect(
-          fraction.connect(deployer).transfer(
-            "0x0000000000000000000000000000000000000000",
-            amount
-          )
+          fraction
+            .connect(deployer)
+            .transfer("0x0000000000000000000000000000000000000000", amount)
         ).to.be.reverted;
       });
     });
@@ -111,12 +114,16 @@ describe("WatchFraction", () => {
 
     beforeEach(async () => {
       amount = tokens(100);
-      transaction = await fraction.connect(deployer).approve(alice.address, amount);
+      transaction = await fraction
+        .connect(deployer)
+        .approve(alice.address, amount);
       await transaction.wait();
     });
 
     it("allocates allowance for delegated transfer", async () => {
-      expect(await fraction.allowance(deployer.address, alice.address)).to.equal(amount);
+      expect(
+        await fraction.allowance(deployer.address, alice.address)
+      ).to.equal(amount);
     });
 
     it("emits Approval event", async () => {
@@ -127,10 +134,9 @@ describe("WatchFraction", () => {
 
     it("rejects invalid spender", async () => {
       await expect(
-        fraction.connect(deployer).approve(
-          "0x0000000000000000000000000000000000000000",
-          amount
-        )
+        fraction
+          .connect(deployer)
+          .approve("0x0000000000000000000000000000000000000000", amount)
       ).to.be.reverted;
     });
   });
@@ -147,19 +153,27 @@ describe("WatchFraction", () => {
     });
 
     it("transfers balances via transferFrom", async () => {
-      await fraction.connect(alice).transferFrom(deployer.address, bob.address, amount);
+      await fraction
+        .connect(alice)
+        .transferFrom(deployer.address, bob.address, amount);
       expect(await fraction.balanceOf(deployer.address)).to.equal(tokens(900));
       expect(await fraction.balanceOf(bob.address)).to.equal(amount);
     });
 
     it("resets allowance", async () => {
-      await fraction.connect(alice).transferFrom(deployer.address, bob.address, amount);
-      expect(await fraction.allowance(deployer.address, alice.address)).to.equal(0);
+      await fraction
+        .connect(alice)
+        .transferFrom(deployer.address, bob.address, amount);
+      expect(
+        await fraction.allowance(deployer.address, alice.address)
+      ).to.equal(0);
     });
 
     it("rejects transfers larger than allowance", async () => {
       await expect(
-        fraction.connect(alice).transferFrom(deployer.address, bob.address, tokens(1000))
+        fraction
+          .connect(alice)
+          .transferFrom(deployer.address, bob.address, tokens(1000))
       ).to.be.reverted;
     });
   });
@@ -169,7 +183,9 @@ describe("WatchFraction", () => {
   //
   describe("Burning Fractions", () => {
     it("allows fractionalizer to burn from user", async () => {
-      await fraction.connect(fractionalizer).burnFromUser(deployer.address, tokens(200));
+      await fraction
+        .connect(fractionalizer)
+        .burnFromUser(deployer.address, tokens(200));
       expect(await fraction.balanceOf(deployer.address)).to.equal(tokens(800));
       expect(await fraction.totalSupply()).to.equal(tokens(800));
     });

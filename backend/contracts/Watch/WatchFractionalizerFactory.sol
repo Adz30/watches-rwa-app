@@ -9,14 +9,18 @@ import "./WatchFraction.sol";
 contract WatchFractionalizerFactory {
     using Strings for uint256;
 
-    IERC721 public watchRegistry;        // NFT registry
-    address public implementation;       // WatchFraction implementation
+    IERC721 public watchRegistry; // NFT registry
+    address public implementation; // WatchFraction implementation
 
     // Track fractionalizers by NFT ID
     mapping(uint256 => address) public fractionalizersById;
     address[] public allFractionalizers;
 
-    event FractionalizerCreated(uint256 indexed watchId, address fractionalizer, address owner);
+    event FractionalizerCreated(
+        uint256 indexed watchId,
+        address fractionalizer,
+        address owner
+    );
     event Redeemed(uint256 indexed watchId, address redeemer);
 
     constructor(address _implementation, address _watchRegistry) {
@@ -28,8 +32,14 @@ contract WatchFractionalizerFactory {
     }
 
     /// @notice Fractionalize an NFT into ERC20 shares
-    function fractionalize(uint256 watchId, uint256 totalShares) external returns (address) {
-        require(fractionalizersById[watchId] == address(0), "Already fractionalized");
+    function fractionalize(
+        uint256 watchId,
+        uint256 totalShares
+    ) external returns (address) {
+        require(
+            fractionalizersById[watchId] == address(0),
+            "Already fractionalized"
+        );
         require(watchRegistry.ownerOf(watchId) == msg.sender, "Not NFT owner");
         require(totalShares > 0, "Shares > 0");
 
@@ -44,8 +54,8 @@ contract WatchFractionalizerFactory {
             string.concat("Watch ", Strings.toString(watchId)),
             string.concat("W", Strings.toString(watchId)),
             totalShares,
-            msg.sender,  // initial ERC20 owner
-            clone        // fractionalizer address
+            msg.sender, // initial ERC20 owner
+            clone // fractionalizer address
         );
 
         fractionalizersById[watchId] = clone;
@@ -61,7 +71,10 @@ contract WatchFractionalizerFactory {
         require(fractionAddress != address(0), "Not fractionalized");
 
         uint256 totalShares = WatchFraction(fractionAddress).totalSupply();
-        require(WatchFraction(fractionAddress).balanceOf(msg.sender) == totalShares, "Not enough shares");
+        require(
+            WatchFraction(fractionAddress).balanceOf(msg.sender) == totalShares,
+            "Not enough shares"
+        );
 
         // Burn ERC20 shares
         WatchFraction(fractionAddress).burnFromUser(msg.sender, totalShares);
@@ -76,12 +89,14 @@ contract WatchFractionalizerFactory {
     }
 
     /// @notice Get fractionalizer address for a specific NFT
-    function getFractionalizer(uint256 watchId) external view returns(address) {
+    function getFractionalizer(
+        uint256 watchId
+    ) external view returns (address) {
         return fractionalizersById[watchId];
     }
 
     /// @notice List all fractionalizers ever created
-    function getAllFractionalizers() external view returns(address[] memory) {
+    function getAllFractionalizers() external view returns (address[] memory) {
         return allFractionalizers;
     }
 }

@@ -9,8 +9,10 @@ contract WatchRegistry is ERC721, Ownable {
     mapping(uint256 => string) private _tokenURIs;
 
     // Pass msg.sender to Ownable constructor
-    constructor() ERC721("Luxury Watch Registry", "WATCH") Ownable(msg.sender) {}
-
+    constructor()
+        ERC721("Luxury Watch Registry", "WATCH")
+        Ownable(msg.sender)
+    {}
 
     //authenticator mints NFT of the watch currently onlyOwner
     function mintWatch(address to, string memory uri) external onlyOwner {
@@ -22,8 +24,13 @@ contract WatchRegistry is ERC721, Ownable {
     }
 
     // function to view token URI
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_ownerOf(tokenId) != address(0), "WatchRegistry: URI query for nonexistent token");
+    function tokenURI(
+        uint256 tokenId
+    ) public view override returns (string memory) {
+        require(
+            _ownerOf(tokenId) != address(0),
+            "WatchRegistry: URI query for nonexistent token"
+        );
         return _tokenURIs[tokenId];
     }
 }
