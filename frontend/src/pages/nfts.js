@@ -99,6 +99,7 @@ export default function NFTsPage() {
             return status?.isCollateral && !status?.repaid;
           }).length}
           icon={() => <span className="text-orange-600 font-bold text-lg">L</span>}
+          }
           color="text-orange-600"
           bgColor="bg-orange-50"
         />
@@ -106,6 +107,7 @@ export default function NFTsPage() {
           title="Fractionalized"
           value={Object.values(nftState.fractionalized.data).filter(info => info.isFramentalized).length}
           icon={() => <span className="text-purple-600 font-bold text-lg">F</span>}
+          }
           color="text-purple-600"
           bgColor="bg-purple-50"
         />
