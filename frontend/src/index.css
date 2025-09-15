@@ -1,68 +1,127 @@
-/* Bootstrap CSS import - make sure bootstrap is installed via npm */
-@import "bootstrap/dist/css/bootstrap.min.css";
-
+/* === Tailwind Base, Components, Utilities === */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-
-/* Your existing styles below */
-/* Global base styles */
+/* === Root & Body === */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ... your existing global styles ... */
+body {
+  @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 antialiased;
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+}
 
-/* Light mode styles inside prefers-color-scheme media */
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* === Buttons === */
+.button {
+  @apply px-6 py-2 rounded-lg font-medium transition-all duration-200 ease-in-out;
+}
+
+.button-primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700;
+}
+
+/* === Cards === */
+.card {
+  @apply bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 transition-transform duration-200 ease-in-out hover:scale-105 hover:shadow-xl;
+  width: 100%;
+  max-width: 100%;
+}
+
+.card-img {
+  @apply w-full object-cover rounded;
+  height: 160px;
+  min-height: 160px;
+}
+
+/* === Grid Containers === */
+.card-grid {
+  @apply grid gap-4 justify-center p-4;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.card-grid-two {
+  @apply grid gap-4 justify-center p-4;
+  grid-template-columns: 1fr 1fr;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.card-flex {
+  @apply flex gap-4 justify-center flex-wrap p-4;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.card-flex .card {
+  flex: 1;
+  min-width: 180px;
+  max-width: 280px;
+}
+
+.card-compact {
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 transition-transform duration-200 ease-in-out hover:scale-105 hover:shadow-lg;
+  width: 100%;
+}
+
+.card-compact .card-img {
+  height: 120px;
+  min-height: 120px;
+}
+
+/* === Responsive Adjustments === */
+@media (max-width: 640px) {
+  .card-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 3;
+    padding: 2;
   }
-  a:hover {
-    color: #747bff;
+  
+  .card-grid-two {
+    grid-template-columns: 1fr;
+    max-width: 300px;
   }
-  button {
-    background-color: #f9f9f9;
-  }
-  body {
-    background-color: #fff;
-    color: #222;
-    transition: background-color 0.3s ease, color 0.3s ease;
+  
+  .card-img {
+    height: 140px;
   }
 }
 
-/* Dark mode styles - OUTSIDE any media queries, applied via class */
-body.dark-mode {
-  background-color: #121212;
-  color: #eee;
-  transition: background-color 0.3s ease, color 0.3s ease;
+@media (max-width: 480px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+    max-width: 200px;
+  }
 }
 
-.dark-mode .blockchain-info {
-  background: #222;
-  color: #aaddff;
+/* === Headings === */
+h2 {
+  @apply text-2xl font-bold mb-6 text-center;
 }
 
-.dark-mode .btn-connect {
-  background: #3399ff;
-  color: #fff;
+/* === NFT-Specific Text === */
+.nft-title {
+  @apply text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100;
 }
 
-.dark-mode .btn-connect:hover {
-  background: #66b3ff;
+.nft-description {
+  @apply text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-3;
 }
 
-.dark-mode a {
-  color: #66aaff;
+.nft-price {
+  @apply text-base font-bold text-green-600 dark:text-green-400;
+}
+
+.nft-attributes {
+  @apply flex flex-wrap gap-1 mb-3;
+}
+
+.nft-attribute {
+  @apply bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-xs;
 }
