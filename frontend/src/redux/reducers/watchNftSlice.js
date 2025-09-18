@@ -1,8 +1,8 @@
-// redux/reducers/watchNftSlice.js
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   contract: null,
+  contractReady: false, // ✅ added
   balance: 0,
   ownedTokens: [],
   tokenURIs: {},
@@ -17,6 +17,7 @@ const watchNFTSlice = createSlice({
   reducers: {
     setWatchNFTContract(state, action) {
       state.contract = action.payload;
+      state.contractReady = !!action.payload; // ✅ mark ready once contract is set
     },
     setBalance(state, action) {
       state.balance = action.payload;
@@ -40,6 +41,7 @@ const watchNFTSlice = createSlice({
     },
     resetWatchNFT(state) {
       state.contract = null;
+      state.contractReady = false;
       state.balance = 0;
       state.ownedTokens = [];
       state.tokenURIs = {};
@@ -50,7 +52,6 @@ const watchNFTSlice = createSlice({
   },
 });
 
-// Export actions
 export const {
   setWatchNFTContract,
   setBalance,
@@ -64,8 +65,5 @@ export const {
 
 export default watchNFTSlice.reducer;
 
-// ----------------------------
-// Selector to check if contract is fully ready
-export const selectWatchNftContractReady = (state) =>
-  !!state.watchNft.contract &&
-  typeof state.watchNft.contract.tokensOfOwner === 'function';
+// ✅ selector for contract ready
+export const selectWatchNftContractReady = (state) => state.watchNft.contractReady;

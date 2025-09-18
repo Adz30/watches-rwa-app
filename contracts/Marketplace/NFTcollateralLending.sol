@@ -169,8 +169,6 @@ contract NFTCollateralLending is ReentrancyGuard {
         loan.repaid = true;
         totalPoolUSDC += received;
 
-        
-
         // Interaction - return NFT to borrower
         nftContract.transferFrom(address(this), msg.sender, nftId);
 
@@ -204,6 +202,16 @@ contract NFTCollateralLending is ReentrancyGuard {
         returns (uint256 _totalPoolUSDC, uint256 _totalShares)
     {
         return (totalPoolUSDC, totalShares);
+    }
+
+    /// @notice Calculate total repayment amount (principal + interest) for a given NFT loan.   
+    function getRepaymentAmount(uint256 nftId) external view returns (uint256) {
+        Loan storage loan = loans[nftId];
+        require(loan.borrower != address(0), "No loan for this NFT");
+        require(!loan.repaid, "Loan already repaid");
+
+        uint256 interest = (loan.borrowedAmount * interestRateBP) / 10000;
+        return loan.borrowedAmount + interest;
     }
 
     /// @notice Sync synthetic accounting with on-chain USDC balance.

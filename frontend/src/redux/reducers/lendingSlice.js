@@ -26,6 +26,22 @@ const initialState = {
     transactionHash: null,
     error: null,
   },
+  borrowing: {
+    isBorrowing: false,
+    isSuccess: false,
+    transactionHash: null,
+    error: null,
+    nftId: null,
+    borrowedAmount: null,
+  },
+  repaying: {
+    isRepaying: false,
+    isSuccess: false,
+    transactionHash: null,
+    error: null,
+    nftId: null,
+    repaymentAmount: null,
+  },
 };
 
 const lendingSlice = createSlice({
@@ -45,8 +61,9 @@ const lendingSlice = createSlice({
       state.userShares = userShares;
     },
     setLoan: (state, action) => {
-      const { nftId, borrower, borrowedAmount, repaid } = action.payload;
-      state.loans[nftId] = { borrower, borrowedAmount, repaid };
+      const { nftId, borrower, borrowedAmount, repaid, repayment } =
+        action.payload;
+      state.loans[nftId] = { borrower, borrowedAmount, repaid, repayment };
     },
     setLoading: (state, action) => {
       state.loading = action.payload;
@@ -92,6 +109,69 @@ const lendingSlice = createSlice({
       state.withdrawing.transactionHash = null;
       state.withdrawing.error = action.payload;
     },
+    borrowRequest: (state, action) => {
+      state.borrowing.isBorrowing = true;
+      state.borrowing.isSuccess = false;
+      state.borrowing.transactionHash = null;
+      state.borrowing.error = null;
+      state.borrowing.nftId = action.payload; // tokenId being borrowed
+      state.borrowing.borrowedAmount = null;
+    },
+    borrowSuccess: (state, action) => {
+      const { nftId, borrowedAmount, transactionHash } = action.payload;
+      state.borrowing.isBorrowing = false;
+      state.borrowing.isSuccess = true;
+      state.borrowing.transactionHash = transactionHash;
+      state.borrowing.error = null;
+      state.borrowing.nftId = nftId;
+      state.borrowing.borrowedAmount = borrowedAmount;
+
+      // also update loans mapping
+      state.loans[nftId] = {
+        borrower: state.contract.signer?.getAddress() || null,
+        borrowedAmount,
+        repaid: false,
+      };
+    },
+    borrowFail: (state, action) => {
+      state.borrowing.isBorrowing = false;
+      state.borrowing.isSuccess = false;
+      state.borrowing.transactionHash = null;
+      state.borrowing.error = action.payload;
+      state.borrowing.nftId = null;
+      state.borrowing.borrowedAmount = null;
+    },
+    repayRequest: (state, action) => {
+      state.repaying.isRepaying = true;
+      state.repaying.isSuccess = false;
+      state.repaying.transactionHash = null;
+      state.repaying.error = null;
+      state.repaying.nftId = action.payload; // NFT being repaid
+      state.repaying.repaymentAmount = null;
+    },
+    repaySuccess: (state, action) => {
+      const { nftId, repaymentAmount, transactionHash } = action.payload;
+      state.repaying.isRepaying = false;
+      state.repaying.isSuccess = true;
+      state.repaying.transactionHash = transactionHash;
+      state.repaying.error = null;
+      state.repaying.nftId = nftId;
+      state.repaying.repaymentAmount = repaymentAmount;
+
+      // ✅ mark loan as repaid
+      if (state.loans[nftId]) {
+        state.loans[nftId].repaid = true;
+        state.loans[nftId].repayment = repaymentAmount;
+      }
+    },
+    repayFail: (state, action) => {
+      state.repaying.isRepaying = false;
+      state.repaying.isSuccess = false;
+      state.repaying.transactionHash = null;
+      state.repaying.error = action.payload;
+      state.repaying.nftId = null;
+      state.repaying.repaymentAmount = null;
+    },
   },
 });
 
@@ -108,6 +188,12 @@ export const {
   withdrawRequest,
   withdrawSuccess,
   withdrawFail,
+  borrowRequest,
+  borrowSuccess,
+  borrowFail,
+  repayRequest,
+  repaySuccess,
+  repayFail,
 } = lendingSlice.actions;
 
 export default lendingSlice.reducer;
@@ -115,3 +201,4 @@ export default lendingSlice.reducer;
 // selector to check contract readiness
 export const selectLendingReady = (state) =>
   !!state.lending.contract && !!state.lending.contract.functions?.getPoolInfo;
+export const selectBorrowing = (state) => state.lending.borrowing;

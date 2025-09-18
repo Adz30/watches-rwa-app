@@ -4,8 +4,8 @@ import { createSlice } from "@reduxjs/toolkit";
 const oracleSlice = createSlice({
   name: "oracle",
   initialState: {
-    contract: null,      // ethers.Contract instance
-    prices: {},          // tokenId -> price mapping
+    contract: null, // ethers.Contract instance
+    prices: {}, // tokenId -> price mapping
     loading: false,
     error: null,
   },
@@ -15,8 +15,9 @@ const oracleSlice = createSlice({
     },
     setOraclePrice(state, action) {
       const { tokenId, price } = action.payload;
-      state.prices[tokenId] = price;
+      state.prices[tokenId.toString()] = price;
     },
+
     setOracleLoading(state, action) {
       state.loading = action.payload;
     },

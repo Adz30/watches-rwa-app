@@ -1,98 +1,48 @@
-import React, { useEffect, useRef } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { getUserNFTsWithMetadata, loadOraclePrice } from "../lib/interactions";
-
-import {
-  setLoading,
-  setError,
-  selectWatchNftContractReady,
-} from "../redux/reducers/watchNftSlice";
+import React, { useMemo } from "react";
+import { useSelector } from "react-redux";
+import { ethers } from "ethers";
 
 export default function Dashboard() {
-  const dispatch = useDispatch();
-  const provider = useSelector((state) => state.provider.connection);
-  const account = useSelector((state) => state.provider.account);
-  const ready = useSelector(selectWatchNftContractReady);
-  const oracle = useSelector((state) => state.oracle.contract);
+  // ✅ Get Redux state once
+  const ready = useSelector((state) => state.watchNft.contractReady);
   const ownedTokens = useSelector((state) => state.watchNft.ownedTokens) || [];
   const tokenMetadata = useSelector((state) => state.watchNft.tokenMetadata) || {};
-  const loadingNFTs = useSelector((state) => state.watchNft.loading);
-  const { prices } = useSelector((state) => state.oracle);
-  const fetchedRef = useRef(false);
+  const prices = useSelector((state) => state.oracle.prices) || {};
+  const loansObj = useSelector((state) => state.lending.loans) || {};
 
-  // Fetch NFTs once when ready
-  useEffect(() => {
-    if (!account || !ready || fetchedRef.current) return;
-    fetchedRef.current = true;
+  // ✅ Memoize derived maps
+  const loansMap = useMemo(() => {
+    const map = {};
+    Object.values(loansObj).forEach((loan) => {
+      if (loan?.nftId) map[loan.nftId.toString()] = loan;
+    });
+    return map;
+  }, [loansObj]);
 
-    const fetchNFTs = async () => {
-      dispatch(setLoading(true));
-      dispatch(setError(null));
-      try {
-        await dispatch(getUserNFTsWithMetadata());
-      } catch (err) {
-        console.error("❌ Error fetching NFTs with metadata:", err);
-        dispatch(setError(err.message));
-      } finally {
-        dispatch(setLoading(false));
-      }
-    };
-
-    fetchNFTs();
-  }, [account, ready, dispatch]);
-
-  // Reset fetch flag if account changes
-  useEffect(() => {
-    fetchedRef.current = false;
-  }, [account]);
-
-  // Fetch Oracle prices
-  useEffect(() => {
-    if (!ownedTokens || ownedTokens.length === 0) {
-      console.log("⏭️ Skipping oracle price load, no ownedTokens.");
-      return;
-    }
-
-    if (!oracle || typeof oracle.getPrice !== "function") {
-      console.warn("⏭️ Oracle not ready, skipping price fetch.");
-      return;
-    }
-
-    if (!provider) {
-      console.warn("⏭️ Provider not ready, skipping price fetch.");
-      return;
-    }
-
-    const fetchPrices = async () => {
-      try {
-        const network = await provider.getNetwork();
-        console.log("🌐 Current network:", network.chainId, network.name);
-
-        console.log("🔄 Fetching prices for ownedTokens:", ownedTokens);
-        for (const tokenId of ownedTokens) {
-          try {
-            const numericId = Number(tokenId); // ensure tokenId is a number
-            const price = await oracle.getPrice(numericId);
-            console.log(`✅ Token ${tokenId} price:`, price.toString());
-
-            // Dispatch price to Redux
-            dispatch(loadOraclePrice(tokenId, price.toString()));
-          } catch (err) {
-            console.error(`❌ Error fetching price for token ${tokenId}:`, err);
-          }
-        }
-      } catch (err) {
-        console.error("❌ Error checking network or fetching prices:", err);
-      }
-    };
-
-    fetchPrices();
-  }, [dispatch, ownedTokens, oracle, provider]);
+  const pricesMap = useMemo(() => {
+    const map = {};
+    ownedTokens.forEach((tokenId) => {
+      const price = prices[tokenId.toString()];
+      map[tokenId] =
+        price !== undefined && price !== null
+          ? `$${parseFloat(ethers.utils.formatUnits(price, 18)).toLocaleString()}`
+          : "Loading...";
+    });
+    return map;
+  }, [ownedTokens, prices]);
 
   if (!ready) {
     return (
       <p className="text-center text-gray-500 dark:text-gray-400 mt-6">
         Loading blockchain data...
+      </p>
+    );
+  }
+
+  if (ownedTokens.length === 0) {
+    return (
+      <p className="text-center text-gray-500 dark:text-gray-400 mt-6">
+        No NFTs found
       </p>
     );
   }
@@ -103,87 +53,111 @@ export default function Dashboard() {
         Your NFT Collection
       </h2>
 
-      {loadingNFTs ? (
-        <p className="text-center text-gray-500 dark:text-gray-400">Loading NFTs...</p>
-      ) : ownedTokens.length === 0 ? (
-        <p className="text-center text-gray-500 dark:text-gray-400">No NFTs found</p>
-      ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: "12px",
-            justifyContent: "center",
-          }}
-        >
-          {ownedTokens.map((tokenId) => {
-            const metadata = tokenMetadata[tokenId];
-            const price = prices[tokenId];
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+          gap: "12px",
+          justifyContent: "center",
+        }}
+      >
+        {ownedTokens.map((tokenId) => {
+          const metadata = tokenMetadata[tokenId];
+          const displayPrice = pricesMap[tokenId];
+          const loan = loansMap[tokenId];
+          const isActiveLoan = loan && !loan.repaid;
+          const borrowedAmount = isActiveLoan
+            ? ethers.utils.formatUnits(loan.borrowedAmount, 18)
+            : null;
 
-            return (
-              <div
-                key={tokenId}
-                style={{
-                  width: "100%",
-                  maxWidth: "160px",
-                  backgroundColor: "white",
-                  color: "black",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                  borderRadius: "12px",
-                  padding: "12px",
-                  transition: "transform 0.2s ease-in-out",
-                  border: "1px solid #e5e7eb",
-                }}
-                className="dark:bg-gray-900 dark:text-gray-100 hover:scale-105"
-              >
-                {metadata?.image && (
-                  <img
-                    src={metadata.image.replace(
-                      "ipfs://",
-                      "https://gateway.pinata.cloud/ipfs/"
-                    )}
-                    alt={`NFT ${tokenId}`}
-                    style={{
-                      width: "100%",
-                      height: "120px",
-                      objectFit: "cover",
-                      borderRadius: "8px",
-                    }}
-                  />
-                )}
-
-                <p
+          return (
+            <div
+              key={tokenId}
+              style={{
+                position: "relative",
+                width: "100%",
+                maxWidth: "160px",
+                backgroundColor: "white",
+                color: "black",
+                boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                borderRadius: "12px",
+                padding: "12px",
+                transition: "transform 0.2s ease-in-out",
+                border: "1px solid #e5e7eb",
+              }}
+              className="dark:bg-gray-900 dark:text-gray-100 hover:scale-105"
+            >
+              {isActiveLoan && (
+                <div
                   style={{
-                    fontWeight: "600",
-                    fontSize: "12px",
-                    marginTop: "8px",
-                    marginBottom: "4px",
+                    position: "absolute",
+                    top: "8px",
+                    right: "8px",
+                    backgroundColor: "red",
+                    color: "white",
+                    borderRadius: "8px",
+                    padding: "2px 6px",
+                    fontSize: "10px",
+                    fontWeight: "bold",
+                    zIndex: 10,
                   }}
                 >
-                  Token ID: {tokenId}
-                </p>
+                  {`Active Loan${
+                    borrowedAmount
+                      ? `: ${parseFloat(borrowedAmount).toLocaleString()} USDC`
+                      : ""
+                  }`}
+                </div>
+              )}
 
-                <p style={{ fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>
-                  Price: {price ? `${price} wei` : "Loading..."}
-                </p>
+              {metadata?.image && (
+                <img
+                  src={metadata.image.replace(
+                    "ipfs://",
+                    "https://gateway.pinata.cloud/ipfs/"
+                  )}
+                  alt={`NFT ${tokenId}`}
+                  style={{
+                    width: "100%",
+                    height: "120px",
+                    objectFit: "cover",
+                    borderRadius: "8px",
+                  }}
+                />
+              )}
 
-                {metadata?.attributes && (
-                  <div
-                    style={{ fontSize: "10px", color: "#6b7280" }}
-                    className="dark:text-gray-300"
-                  >
-                    {metadata.attributes.map((attr, i) => (
-                      <p key={i} style={{ margin: "2px 0" }}>
-                        <span style={{ fontWeight: "600" }}>{attr.trait_type}:</span> {attr.value}
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+              <p
+                style={{
+                  fontWeight: "600",
+                  fontSize: "12px",
+                  marginTop: "8px",
+                  marginBottom: "4px",
+                }}
+              >
+                Token ID: {tokenId}
+              </p>
+
+              <p style={{ fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>
+                Price: {displayPrice} USDC
+              </p>
+
+              {metadata?.attributes && (
+                <div
+                  style={{ fontSize: "10px", color: "#6b7280" }}
+                  className="dark:text-gray-300"
+                >
+                  {metadata.attributes.map((attr, i) => (
+                    <p key={i} style={{ margin: "2px 0" }}>
+                      <span style={{ fontWeight: "600" }}>{attr.trait_type}:</span>{" "}
+                      {attr.value}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

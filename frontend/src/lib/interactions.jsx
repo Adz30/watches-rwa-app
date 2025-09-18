@@ -10,7 +10,12 @@ import {
   setSymbols,
   balancesLoaded,
 } from "../redux/reducers/tokenSlice";
-import { setOracleContract, setOraclePrice, setOracleError, setOracleLoading } from "../redux/reducers/oracleSlice";
+import {
+  setOracleContract,
+  setOraclePrice,
+  setOracleError,
+  setOracleLoading,
+} from "../redux/reducers/oracleSlice";
 import {
   setWatchNFTContract,
   setBalance,
@@ -23,8 +28,20 @@ import {
 import {
   setLendingContract,
   setLendingData,
-  
+  setLoan,
+  depositRequest,
+  depositSuccess,
+  depositFail,
+  withdrawRequest,
+  withdrawSuccess,
+  withdrawFail,
+  borrowRequest,
+  borrowSuccess,
+  borrowFail,
   setReadOnlyLendingContract,
+  repayFail,
+  repayRequest,
+  repaySuccess,
 } from "../redux/reducers/lendingSlice";
 
 import { setFractionalizerFactoryContract } from "../redux/reducers/fractionalizerFactorySlice";
@@ -40,7 +57,6 @@ import AmmFactory_ABI from "../abi/AmmFactory.json";
 import config from "../config.json";
 
 import axios from "axios";
-
 
 // ----------------------------
 // Load provider
@@ -70,10 +86,8 @@ export const loadAccount = async (dispatch) => {
   return account;
 };
 
-
-
 // ----------------------------
-// Load USDC token 
+// Load USDC token
 
 export const loadUSDC = async (provider, chainId, account, dispatch) => {
   try {
@@ -87,7 +101,7 @@ export const loadUSDC = async (provider, chainId, account, dispatch) => {
 
     const symbol = await usdcContract.symbol();
     console.log("✅ USDC loaded:", { contract: usdcContract, symbol });
-    console.log ("contract", usdcContract );
+    console.log("contract", usdcContract);
 
     const balance = await usdcContract.balanceOf(account);
     const formattedBalance = ethers.utils.formatUnits(balance, 18);
@@ -105,7 +119,6 @@ export const loadUSDC = async (provider, chainId, account, dispatch) => {
   }
 };
 
-
 // ----------------------------
 // Load Oracle
 export const loadOracle = async (provider, dispatch, address) => {
@@ -114,39 +127,29 @@ export const loadOracle = async (provider, dispatch, address) => {
   dispatch(setOracleContract(contract)); // store actual contract, not just addr
   console.log("✅ Oracle loaded:", address);
   return contract;
-};// ----------------------------
+}; // ----------------------------
 // Fetch and store price for a given tokenId
 // ----------------------------
-export const loadOraclePrice = (tokenId) => async (dispatch, getState) => {
-  console.log("🔍 loadOraclePrice called for tokenId:", tokenId);
+export const loadOraclePrice =
+  (tokenId, oracleContract) => async (dispatch) => {
+    if (!oracleContract) {
+      console.warn("❌ Oracle contract not available");
+      return;
+    }
 
-  const oracle = getState().oracle.contract; // get contract from Redux
-  console.log("📦 Current oracle in Redux:", oracle ? "FOUND" : "MISSING");
+    try {
+      console.log(`⏳ Fetching fresh price for tokenId ${tokenId}...`);
+      const price = await oracleContract.getPrice(tokenId);
+      console.log(`✅ Fresh price for tokenId ${tokenId}:`, price.toString());
 
-  if (!oracle) {
-    console.warn("❌ Oracle contract not set yet");
-    return;
-  }
-
-  try {
-    console.log(`⏳ Calling oracle.getPrice(${tokenId})...`);
-    const price = await oracle.getPrice(tokenId);
-    console.log(`✅ Price fetched for tokenId ${tokenId}:`, price.toString());
-
-    dispatch(setOraclePrice({ tokenId, price: price.toString() }));
-    console.log("📤 Dispatched setOraclePrice:", { tokenId, price: price.toString() });
-  } catch (err) {
-    console.error(`❌ Error in loadOraclePrice for tokenId ${tokenId}:`, err);
-
-    if (err?.message?.includes("oracle: price not set")) {
-      console.warn(`⚠️ Price not set for tokenId ${tokenId}`);
-      dispatch(setOraclePrice({ tokenId, price: null }));
-    } else {
-      console.error(`❌ Unknown error fetching price for tokenId ${tokenId}:`, err.message);
+      dispatch(
+        setOraclePrice({ tokenId: tokenId.toString(), price: price.toString() })
+      );
+    } catch (err) {
+      console.error(`❌ Error fetching price for tokenId ${tokenId}:`, err);
       dispatch(setOracleError(err.message));
     }
-  }
-};
+  };
 
 // ----------------------------
 // Load WatchNFT
@@ -319,7 +322,7 @@ export const getUserNFTsWithMetadata = () => async (dispatch, getState) => {
 
   if (!contract || !account) return;
   console.log("Contract available:", contract);
-console.log("Has tokensOfOwner:", typeof contract.tokensOfOwner);
+  console.log("Has tokensOfOwner:", typeof contract.tokensOfOwner);
 
   try {
     // Use the tokensOfOwner function instead of balanceOf/tokenOfOwnerByIndex
@@ -364,7 +367,6 @@ export const loadLending = async (provider, dispatch, address, account) => {
 
   console.log("✅ Lending loaded (signer & read-only):", address);
   return contract;
-
 };
 // ----------------------------
 // Load lending pool data
@@ -380,98 +382,275 @@ export const loadLendingData = async (lendingContract, account, dispatch) => {
 
     userShares = {
       shares: ethers.utils.formatUnits(lender.shares, 18),
-      usdcValue: ethers.utils.formatUnits(lender.usdcValue, 18)
+      usdcValue: ethers.utils.formatUnits(lender.usdcValue, 18),
     };
   }
-
   dispatch(
     setLendingData({
       totalPoolUSDC: ethers.utils.formatUnits(totalPoolUSDCBN, 18),
       totalShares: ethers.utils.formatUnits(totalSharesBN, 18),
-      userShares
+      userShares,
     })
   );
+};
+export const fetchUserLoansWithRepayment = async (
+  lendingContract,
+  nftIds,
+  account,
+  dispatch
+) => {
+  if (!lendingContract || !nftIds || !account) return [];
+
+  const results = await Promise.all(
+    nftIds.map(async (nftId) => {
+      try {
+        const [borrower, borrowedAmountBN, repaid] =
+          await lendingContract.getLoan(nftId);
+        if (borrower.toLowerCase() !== account.toLowerCase()) return null;
+
+        let repayment = "0";
+        if (!repaid) {
+          repayment = (
+            await lendingContract.getRepaymentAmount(nftId)
+          ).toString();
+        }
+
+        const loanData = {
+          nftId: nftId.toString(),
+          borrower,
+          borrowedAmount: borrowedAmountBN.toString(),
+          repaid,
+          repayment,
+        };
+
+        dispatch(setLoan(loanData));
+        return loanData;
+      } catch (err) {
+        console.error(`Failed to fetch loan for NFT ${nftId}:`, err);
+        return null;
+      }
+    })
+  );
+
+  return results.filter(Boolean); // remove nulls
+};
+
+export const borrowNFT = async (
+  lendingContract,
+  nftContract,
+  nftId,
+  signer,
+  dispatch
+) => {
+  try {
+    // Dispatch request start
+    dispatch(borrowRequest());
+
+    // Initialize signer if not provided
+    if (!signer) {
+      if (!window.ethereum) throw new Error("MetaMask not found");
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      signer = provider.getSigner();
+    }
+
+    if (!lendingContract || !nftContract)
+      throw new Error("Contracts not initialized");
+
+    // Approve NFT if not already approved
+    const approved = await nftContract.getApproved(nftId);
+    if (approved.toLowerCase() !== lendingContract.address.toLowerCase()) {
+      console.log(`Approving NFT ${nftId} for lending contract...`);
+      const approvalTx = await nftContract
+        .connect(signer)
+        .approve(lendingContract.address, nftId);
+      await approvalTx.wait();
+      console.log("✅ NFT approved");
+    } else {
+      console.log("NFT already approved for lending contract");
+    }
+
+    // Deposit NFT and borrow
+    console.log(`Depositing NFT ${nftId} and borrowing USDC...`);
+    const tx = await lendingContract.connect(signer).depositNFTAndBorrow(nftId);
+    console.log("Transaction sent:", tx.hash);
+
+    const receipt = await tx.wait();
+    console.log("Transaction confirmed:", receipt.transactionHash);
+
+    // Extract borrowed amount from LoanTaken event
+    const loanEvent = receipt.events.find((e) => e.event === "LoanTaken");
+    if (!loanEvent) throw new Error("LoanTaken event not found");
+
+    const { borrower, nftId: token, amount } = loanEvent.args;
+    console.log(
+      `✅ Borrowed ${ethers.utils.formatUnits(
+        amount,
+        18
+      )} USDC for NFT ${token}`
+    );
+
+    // Dispatch success
+    dispatch(
+      borrowSuccess({
+        nftId: token.toString(),
+        borrowedAmount: amount.toString(),
+      })
+    );
+
+    return amount;
+  } catch (err) {
+    console.error("❌ Error in borrowNFT:", err);
+    dispatch(borrowFail(err.message));
+    throw err;
+  }
 };
 
 // ----------------------------
 // Write functions
 // ----------------------------
-export const depositUSDC = async (lendingContract, usdcContract, account, amount) => {
+export const depositUSDC = async (
+  lendingContract,
+  usdcContract,
+  account,
+  amount,
+  dispatch
+) => {
   if (!account) throw new Error("No connected account");
-  if (!lendingContract || !usdcContract) throw new Error("Contracts not loaded");
+  if (!lendingContract || !usdcContract)
+    throw new Error("Contracts not loaded");
 
-  const provider = lendingContract.provider || usdcContract.provider;
-  const signer = provider.getSigner(account);
+  try {
+    dispatch(depositRequest());
 
-  const lendingWithSigner = lendingContract.connect(signer);
-  const usdcWithSigner = usdcContract.connect(signer);
+    const provider = lendingContract.provider || usdcContract.provider;
+    const signer = provider.getSigner(account);
 
-  // 🔍 Check decimals
-  const decimals = await usdcWithSigner.decimals();
-  console.log("🔢 USDC decimals:", decimals);
+    const lendingWithSigner = lendingContract.connect(signer);
+    const usdcWithSigner = usdcContract.connect(signer);
 
-  // Parse amount properly
-  const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
-  console.log("💰 Deposit amount (wei):", amountWei.toString());
+    // Parse amount properly
+    const decimals = await usdcWithSigner.decimals();
+    const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
 
-  // 🔍 Log balances + allowance before
-  const balanceBefore = await usdcWithSigner.balanceOf(account);
-  const allowanceBefore = await usdcWithSigner.allowance(account, lendingWithSigner.address);
-  console.log("📊 Balance before:", ethers.utils.formatUnits(balanceBefore, decimals));
-  console.log("📊 Allowance before:", ethers.utils.formatUnits(allowanceBefore, decimals));
+    // Approve USDC
+    const approveTx = await usdcWithSigner.approve(
+      lendingWithSigner.address,
+      amountWei
+    );
+    await approveTx.wait();
 
-  // Approve
-  console.log("✅ Approving USDC...");
-  const approveTx = await usdcWithSigner.approve(lendingWithSigner.address, amountWei);
-  await approveTx.wait();
+    // Deposit
+    const depositTx = await lendingWithSigner.deposit(amountWei);
+    await depositTx.wait();
 
-  // 🔍 Log allowance after approve
-  const allowanceAfter = await usdcWithSigner.allowance(account, lendingWithSigner.address);
-  console.log("📊 Allowance after approve:", ethers.utils.formatUnits(allowanceAfter, decimals));
-
-  // Deposit
-  console.log("🏦 Depositing into lending contract...");
-  const depositTx = await lendingWithSigner.deposit(amountWei);
-  await depositTx.wait();
-
-  
-  // 🔍 Log balances after
-  const balanceAfter = await usdcWithSigner.balanceOf(account);
-  console.log("📊 Balance after:", ethers.utils.formatUnits(balanceAfter, decimals));
-  
-  return depositTx;
+    dispatch(depositSuccess(depositTx.hash));
+    return depositTx;
+  } catch (err) {
+    console.error("❌ Deposit failed:", err);
+    dispatch(depositFail(err.message));
+    throw err;
+  }
 };
 
-
-export const withdrawUSDC = async (lendingContract, account, amount) => {
+// ----------------------------
+// Withdraw USDC with Redux dispatch
+export const withdrawUSDC = async (
+  lendingContract,
+  account,
+  amount,
+  dispatch
+) => {
   if (!account) throw new Error("No connected account");
   if (!lendingContract) throw new Error("Lending contract not loaded");
 
-  const provider = lendingContract.provider;
-  const signer = provider.getSigner(account);
-  const lendingWithSigner = lendingContract.connect(signer);
+  try {
+    dispatch(withdrawRequest());
 
-  // Parse amount assuming 18 decimals
-  const amountWei = ethers.utils.parseUnits(amount.toString(), 18);
-  console.log("💰 Withdraw amount (wei):", amountWei.toString());
+    const provider = lendingContract.provider;
+    const signer = provider.getSigner(account);
+    const lendingWithSigner = lendingContract.connect(signer);
 
-  // Execute withdrawal
-  console.log("🏦 Withdrawing from lending contract...");
-  const withdrawTx = await lendingWithSigner.withdraw(amountWei);
-  await withdrawTx.wait();
+    // Parse amount assuming 18 decimals
+    const amountWei = ethers.utils.parseUnits(amount.toString(), 18);
 
-  console.log("✅ Withdraw transaction confirmed:", withdrawTx.hash);
-  return withdrawTx;
+    const withdrawTx = await lendingWithSigner.withdraw(amountWei);
+    await withdrawTx.wait();
+
+    dispatch(withdrawSuccess(withdrawTx.hash));
+    return withdrawTx;
+  } catch (err) {
+    console.error("❌ Withdraw failed:", err);
+    dispatch(withdrawFail(err.message));
+    throw err;
+  }
 };
 
-export const borrowWithNFT = async (lendingContract, tokenId) => {
-  const tx = await lendingContract.depositNFTAndBorrow(tokenId);
-  await tx.wait();
-};
+// ----------------------------
+// Repay NFT loan
+export const repayLoan = async (
+  lendingContract,
+  usdcContract,
+  nftId,
+  account,
+  dispatch
+) => {
+  try {
+    dispatch(repayRequest(nftId));
 
-export const repayNFTLoan = async (lendingContract, tokenId) => {
-  const tx = await lendingContract.repayLoan(tokenId);
-  await tx.wait();
+    if (!lendingContract || !usdcContract) throw new Error("Contracts not initialized");
+    if (!window.ethereum) throw new Error("MetaMask not found");
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner(account);
+
+    // --- Get repayment amount from contract ---
+    let repayment = await lendingContract.getRepaymentAmount(nftId);
+    if (!repayment) throw new Error("Repayment amount is undefined");
+
+    const repaymentBN = ethers.BigNumber.isBigNumber(repayment)
+      ? repayment
+      : ethers.BigNumber.from(repayment);
+
+    console.log(`Repayment amount for NFT ${nftId}:`, repaymentBN.toString());
+
+    // --- Approve USDC if needed ---
+    const allowance = await usdcContract.allowance(account, lendingContract.address);
+    if (allowance.lt(repaymentBN)) {
+      console.log("Approving USDC for repayment...");
+      const approveTx = await usdcContract.connect(signer).approve(
+        lendingContract.address,
+        repaymentBN
+      );
+      await approveTx.wait();
+      console.log("✅ USDC approved for repayment");
+    }
+
+    // --- Repay loan ---
+    console.log(`Repaying loan for NFT ${nftId} with ${repaymentBN.toString()} USDC`);
+    const tx = await lendingContract.connect(signer).repayLoan(nftId);
+    const receipt = await tx.wait();
+
+    console.log(`Repayment amount for NFT ${nftId}:`, repaymentBN.toString());
+console.log("Approving USDC for repayment...");
+console.log(`Repaying loan for NFT ${nftId} with ${repaymentBN.toString()} USDC`);
+console.log("Transaction sent:", tx.hash);
+console.log("Transaction confirmed:", receipt.transactionHash);
+
+    // ✅ Dispatch success
+    dispatch(
+      repaySuccess({
+        nftId,
+        repaymentAmount: repaymentBN.toString(),
+        transactionHash: tx.hash,
+      })
+    );
+
+    return tx;
+  } catch (err) {
+    console.error("❌ Error in repayLoan:", err);
+    dispatch(repayFail(err.message));
+    throw err;
+  }
 };
 
 // ----------------------------
