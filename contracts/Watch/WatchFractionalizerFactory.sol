@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./WatchFraction.sol";
 
+
 contract WatchFractionalizerFactory {
     using Strings for uint256;
 
@@ -55,7 +56,7 @@ contract WatchFractionalizerFactory {
             string.concat("W", Strings.toString(watchId)),
             totalShares,
             msg.sender, // initial ERC20 owner
-            clone // fractionalizer address
+            address(this) // fractionalizer address
         );
 
         fractionalizersById[watchId] = clone;
@@ -67,26 +68,27 @@ contract WatchFractionalizerFactory {
 
     /// @notice Redeem full NFT by burning all ERC20 shares
     function redeem(uint256 watchId) external {
-        address fractionAddress = fractionalizersById[watchId];
-        require(fractionAddress != address(0), "Not fractionalized");
+    address fractionAddress = fractionalizersById[watchId];
+    require(fractionAddress != address(0), "Not fractionalized");
 
-        uint256 totalShares = WatchFraction(fractionAddress).totalSupply();
-        require(
-            WatchFraction(fractionAddress).balanceOf(msg.sender) == totalShares,
-            "Not enough shares"
-        );
+    WatchFraction fraction = WatchFraction(fractionAddress);
+    uint256 totalShares = fraction.totalSupply();
+    uint256 userBalance = fraction.balanceOf(msg.sender);
 
-        // Burn ERC20 shares
-        WatchFraction(fractionAddress).burnFromUser(msg.sender, totalShares);
+    // Require at least 99% of fractions
+    require(userBalance * 100 / totalShares >= 99, "Need >=99% of fractions");
 
-        // Return NFT
-        watchRegistry.transferFrom(address(this), msg.sender, watchId);
+    // Burn user fractions
+    fraction.burnFromUser(msg.sender, userBalance);
 
-        // Cleanup
-        fractionalizersById[watchId] = address(0);
+    // Return NFT
+    watchRegistry.transferFrom(address(this), msg.sender, watchId);
 
-        emit Redeemed(watchId, msg.sender);
-    }
+    // Optional: keep fractionalizer record for tracking
+    fractionalizersById[watchId] = address(0);
+
+    emit Redeemed(watchId, msg.sender);
+}
 
     /// @notice Get fractionalizer address for a specific NFT
     function getFractionalizer(

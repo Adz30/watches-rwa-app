@@ -5,6 +5,7 @@ pragma solidity ^0.8.20;
 interface IERC20 {
     function decimals() external view returns (uint8);
     function balanceOf(address) external view returns (uint256);
+    function totalSupply() external view returns (uint256);
     function allowance(address, address) external view returns (uint256);
     function transfer(address, uint256) external returns (bool);
     function transferFrom(address, address, uint256) external returns (bool);
@@ -136,11 +137,10 @@ contract AMM {
     // ----------------------------
     function _price() internal view returns (uint256) {
         return priceOracle.getPrice(watchId);
-        
     }
     function poolPrice() external view returns (uint256) {
-    return _price();
-}
+        return _price();
+    }
 
     // ----------------------------
     // LP: Add liquidity by VALUE
@@ -257,14 +257,15 @@ contract AMM {
     ) external returns (uint256 usdcOut) {
         require(fractionIn > 0, "zero in");
         uint256 price18 = _price();
-        uint256 gross = (fractionIn * price18) / 1e18;
+        uint256 totalSupply = fractionToken.totalSupply();
 
-        // apply fee on output (LP-friendly). Could also apply on input.
+        uint256 gross = (fractionIn * price18) / totalSupply;
         uint256 fee = (gross * feeBps) / 10000;
         uint256 net = gross - fee;
-        require(net >= minUsdcOut, "slippage");
 
+        require(net >= minUsdcOut, "slippage");
         require(usdcBalance >= net, "insufficient USDC");
+
         require(
             fractionToken.transferFrom(msg.sender, address(this), fractionIn),
             "fraction transfer failed"
@@ -274,7 +275,6 @@ contract AMM {
         fractionBalance += fractionIn;
         usdcBalance -= net;
 
-        // fee handling
         if (fee > 0 && feeRecipient != address(0)) {
             require(
                 usdcToken.transfer(feeRecipient, fee),
@@ -282,7 +282,6 @@ contract AMM {
             );
         }
 
-        // send net to user
         require(usdcToken.transfer(msg.sender, net), "USDC transfer failed");
 
         emit Swap(
@@ -294,6 +293,7 @@ contract AMM {
             price18,
             block.timestamp
         );
+
         return net;
     }
 
@@ -306,23 +306,24 @@ contract AMM {
     ) external returns (uint256 fractionOut) {
         require(usdcIn > 0, "zero in");
         uint256 price18 = _price();
+        uint256 totalSupply = fractionToken.totalSupply();
 
-        // apply fee on input (symmetry with other path is optional)
         uint256 fee = (usdcIn * feeBps) / 10000;
         uint256 netUsdcIn = usdcIn - fee;
-        fractionOut = (netUsdcIn * 1e18) / price18;
+
+        fractionOut = (netUsdcIn * totalSupply) / price18;
         require(fractionOut >= minFractionOut, "slippage");
         require(fractionBalance >= fractionOut, "insufficient fraction");
 
-        // pull USDC in
         require(
             usdcToken.transferFrom(msg.sender, address(this), usdcIn),
             "USDC transferFrom failed"
         );
+
         // update balances
         usdcBalance += netUsdcIn;
+        fractionBalance -= fractionOut;
 
-        // fee handling
         if (fee > 0 && feeRecipient != address(0)) {
             require(
                 usdcToken.transfer(feeRecipient, fee),
@@ -330,8 +331,6 @@ contract AMM {
             );
         }
 
-        // send fraction out
-        fractionBalance -= fractionOut;
         require(
             fractionToken.transfer(msg.sender, fractionOut),
             "fraction transfer failed"
@@ -346,6 +345,7 @@ contract AMM {
             price18,
             block.timestamp
         );
+
         return fractionOut;
     }
 }

@@ -3,12 +3,13 @@ import { configureStore } from '@reduxjs/toolkit';
 
 import tokensReducer from './reducers/tokenSlice';
 import watchNftReducer from './reducers/watchNftSlice';
-import ammReducer from './reducers/ammFactorySlice';
+import ammReducer from './reducers/ammSlice';
 import lendingReducer from './reducers/lendingSlice';
 import oracleReducer from './reducers/oracleSlice';
 import fractionalizerFactoryReducer from './reducers/fractionalizerFactorySlice';
 import fractionalizerReducer from './reducers/fractionalizerSlice';
-import ammPoolReducer from './reducers/ammPoolSlice';
+import watchFractionReducer from './reducers/watchFractionSlice';
+
 import providerReducer from './reducers/providerSlice';
 
 
@@ -19,9 +20,9 @@ export const store = configureStore({
     amm: ammReducer,
     lending: lendingReducer,
     oracle: oracleReducer,
+    watchFraction: watchFractionReducer,
     fractionalizerFactory: fractionalizerFactoryReducer,
     fractionalizer: fractionalizerReducer,
-    ammPool: ammPoolReducer,
     provider: providerReducer,
     // add ammSlice, nftSlice, lendingSlice here later
   },

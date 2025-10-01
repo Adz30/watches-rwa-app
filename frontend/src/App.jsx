@@ -13,6 +13,7 @@ import { setLoading } from "./redux/reducers/watchNftSlice";
 import { setLoan } from "./redux/reducers/lendingSlice";
 import { selectWatchNftContractReady } from "./redux/reducers/watchNftSlice";
 
+
 import {
   loadProvider,
   loadNetwork,
@@ -21,11 +22,14 @@ import {
   loadOracle,
   loadLending,
   loadFractionalizerFactory,
-  loadFractionalizer,
   loadWatchNFT,
   getUserNFTsWithMetadata,
   fetchUserLoansWithRepayment,
   loadOraclePrice,
+  loadAmmFactory,
+  loadFractionsForOwner,
+  
+  
 } from "./lib/interactions";
 
 import CONFIG from "./config.json";
@@ -35,12 +39,22 @@ export default function App() {
 
   // Redux selectors
   const contractReady = useSelector(selectWatchNftContractReady);
+  const provider = useSelector((state) => state.provider.connection);
   const oracle = useSelector((state) => state.oracle.contract);
   const lendingContract = useSelector((state) => state.lending.contract);
   const ownedTokens = useSelector((state) => state.watchNft.ownedTokens) || [];
   const oraclePrices = useSelector((state) => state.oracle.prices) || {};
   const loans = useSelector((state) => state.lending.loans) || {};
   const account = useSelector((state) => state.provider.account);
+   const factoryContract = useSelector(
+    (state) => state.fractionalizerFactory.contract
+  );
+  const ammFactoryContract = useSelector((state) => state.amm.ammFactoryContract);
+
+  // Debugging logs
+  useEffect(() => {
+    console.log("🏦 AMM Factory Contract:", ammFactoryContract ? ammFactoryContract.address : "Not loaded");
+  }, [ammFactoryContract]);
 
   // 1️⃣ Initialize provider, network, account, and load contracts
   useEffect(() => {
@@ -68,7 +82,7 @@ export default function App() {
         await loadWatchNFT(provider, dispatch, chainConfig.watchNFT.address);
         await loadLending(provider, dispatch, chainConfig.lending.address, userAccount);
         await loadFractionalizerFactory(provider, dispatch, chainConfig.fractionalizerFactory.address);
-        await loadFractionalizer(provider, dispatch, chainConfig.fractionalizerImpl.address);
+        await loadAmmFactory(provider, userAccount, dispatch, chainConfig.factory.address);
 
         console.log("✅ All contracts loaded");
         dispatch(setLoading(false));
@@ -128,6 +142,8 @@ export default function App() {
     fetchLoans();
   }, [contractReady, lendingContract, ownedTokens, loans, account, dispatch]);
 
+
+
   useEffect(() => {
   console.log("📄 Current loans in Redux:", loans);
   console.table(
@@ -140,6 +156,18 @@ export default function App() {
     }))
   );
 }, [loans]);
+
+
+  useEffect(() => {
+    if (!account || !factoryContract || !ownedTokens.length) return;
+
+    // Load fraction data for all owned NFTs
+    loadFractionsForOwner(factoryContract, ownedTokens, provider, account, dispatch);
+    console.log("✅ Loading fractions for owned NFTs from app page" );
+  }, [account, factoryContract, ownedTokens, provider, dispatch]);
+
+
+
 
 
   if (!contractReady) {
