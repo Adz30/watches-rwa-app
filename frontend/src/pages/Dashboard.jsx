@@ -3,14 +3,14 @@ import { useSelector } from "react-redux";
 import { ethers } from "ethers";
 
 export default function Dashboard() {
-  // ✅ Get Redux state once
+  // ✅ Redux state
   const ready = useSelector((state) => state.watchNft.contractReady);
   const ownedTokens = useSelector((state) => state.watchNft.ownedTokens) || [];
   const tokenMetadata = useSelector((state) => state.watchNft.tokenMetadata) || {};
   const prices = useSelector((state) => state.oracle.prices) || {};
   const loansObj = useSelector((state) => state.lending.loans) || {};
 
-  // ✅ Memoize derived maps
+  // ✅ Memoized derived maps
   const loansMap = useMemo(() => {
     const map = {};
     Object.values(loansObj).forEach((loan) => {
@@ -48,19 +48,12 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ maxWidth: "600px", margin: "0 auto", padding: "16px" }}>
-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-white">
+    <div className="max-w-3xl mx-auto p-4">
+      <h2 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">
         Your NFT Collection
       </h2>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-          gap: "12px",
-          justifyContent: "center",
-        }}
-      >
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {ownedTokens.map((tokenId) => {
           const metadata = tokenMetadata[tokenId];
           const displayPrice = pricesMap[tokenId];
@@ -73,35 +66,10 @@ export default function Dashboard() {
           return (
             <div
               key={tokenId}
-              style={{
-                position: "relative",
-                width: "100%",
-                maxWidth: "160px",
-                backgroundColor: "white",
-                color: "black",
-                boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                borderRadius: "12px",
-                padding: "12px",
-                transition: "transform 0.2s ease-in-out",
-                border: "1px solid #e5e7eb",
-              }}
-              className="dark:bg-gray-900 dark:text-gray-100 hover:scale-105"
+              className="relative bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-50 border border-gray-200 dark:border-gray-700 shadow-md rounded-xl p-3 hover:scale-105 transition-transform"
             >
               {isActiveLoan && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "8px",
-                    right: "8px",
-                    backgroundColor: "red",
-                    color: "white",
-                    borderRadius: "8px",
-                    padding: "2px 6px",
-                    fontSize: "10px",
-                    fontWeight: "bold",
-                    zIndex: 10,
-                  }}
-                >
+                <div className="absolute top-2 right-2 bg-red-600 text-white rounded-md px-2 py-1 text-xs font-bold z-10">
                   {`Active Loan${
                     borrowedAmount
                       ? `: ${parseFloat(borrowedAmount).toLocaleString()} USDC`
@@ -117,38 +85,23 @@ export default function Dashboard() {
                     "https://gateway.pinata.cloud/ipfs/"
                   )}
                   alt={`NFT ${tokenId}`}
-                  style={{
-                    width: "100%",
-                    height: "120px",
-                    objectFit: "cover",
-                    borderRadius: "8px",
-                  }}
+                  className="w-full h-28 object-cover rounded-md"
                 />
               )}
 
-              <p
-                style={{
-                  fontWeight: "600",
-                  fontSize: "12px",
-                  marginTop: "8px",
-                  marginBottom: "4px",
-                }}
-              >
+              <p className="mt-2 mb-1 text-sm font-semibold">
                 Token ID: {tokenId}
               </p>
 
-              <p style={{ fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>
+              <p className="mb-1 text-sm font-semibold">
                 Price: {displayPrice} USDC
               </p>
 
               {metadata?.attributes && (
-                <div
-                  style={{ fontSize: "10px", color: "#6b7280" }}
-                  className="dark:text-gray-300"
-                >
+                <div className="text-xs text-gray-500 dark:text-gray-300">
                   {metadata.attributes.map((attr, i) => (
-                    <p key={i} style={{ margin: "2px 0" }}>
-                      <span style={{ fontWeight: "600" }}>{attr.trait_type}:</span>{" "}
+                    <p key={i} className="my-[2px]">
+                      <span className="font-semibold">{attr.trait_type}:</span>{" "}
                       {attr.value}
                     </p>
                   ))}

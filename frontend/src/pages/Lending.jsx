@@ -33,16 +33,12 @@ export default function Lending() {
   const watchNFT = useSelector((state) => state.watchNft);
   const depositing = useSelector((state) => state.lending.depositing);
   const withdrawing = useSelector((state) => state.lending.withdrawing);
-  const { totalPoolUSDC, totalShares, userShares } = useSelector(
-    (state) => state.lending
-  );
-  const loans = useSelector((state) => state.lending.loans);
+  const { totalPoolUSDC, totalShares, userShares, loans } = useSelector((state) => state.lending);
   const ready = useSelector(selectLendingReady);
   const borrowing = useSelector(selectBorrowing);
 
   const ownedTokens = watchNFT.ownedTokens || [];
   const nftMetadataMap = watchNFT.metadata || {};
-
   const userNFTs = ownedTokens.map((tokenId) => ({
     tokenId,
     metadata: nftMetadataMap[tokenId] || {},
@@ -61,7 +57,6 @@ export default function Lending() {
     }
   };
 
-  // Load lending data once ready
   useEffect(() => {
     if (!ready || !usdcReady) return;
     loadLendingData(lendingContract, account, dispatch).catch((err) =>
@@ -129,17 +124,9 @@ export default function Lending() {
   const handleRepay = async (loan) => {
     if (!loan.nftId || !lendingContract || !usdcContract) return;
 
-    console.log("🔹 Repay button clicked for loan:", loan);
-
     try {
       dispatch(repayRequest());
-      const tx = await repayLoan(
-        lendingContract,
-        usdcContract,
-        loan.nftId,
-        account,
-        dispatch
-      );
+      const tx = await repayLoan(lendingContract, usdcContract, loan.nftId, account, dispatch);
       dispatch(
         repaySuccess({
           nftId: loan.nftId,
@@ -155,16 +142,19 @@ export default function Lending() {
   };
 
   return (
-    <div className="lending-pool-info">
-      <h2>Lending Pool Info</h2>
-      <p>Total Pool USDC: {formatDisplay(totalPoolUSDC)}</p>
-      <p>Total Shares: {formatDisplay(totalShares)}</p>
-      <p>Your Shares: {formatDisplay(userShares.shares)}</p>
-      <p>Your USDC Value: {formatDisplay(userShares.usdcValue)}</p>
+    <div className="p-6 max-w-4xl mx-auto flex flex-col gap-6">
+      {/* Pool Info */}
+      <div className="card bg-gray-800 text-white p-4 rounded-xl shadow-md">
+        <h2 className="text-xl font-bold mb-2">Lending Pool Info</h2>
+        <p>Total Pool USDC: {formatDisplay(totalPoolUSDC)}</p>
+        <p>Total Shares: {formatDisplay(totalShares)}</p>
+        <p>Your Shares: {formatDisplay(userShares.shares)}</p>
+        <p>Your USDC Value: {formatDisplay(userShares.usdcValue)}</p>
+      </div>
 
-      {/* ---------------- USDC Deposit ---------------- */}
-      <div className="deposit-section">
-        <h3>Deposit USDC</h3>
+      {/* Deposit Card */}
+      <div className="card bg-gray-700 text-white p-4 rounded-xl shadow-md flex flex-col gap-2">
+        <h3 className="font-semibold">Deposit USDC</h3>
         <input
           type="number"
           step="0.000000000000000001"
@@ -172,8 +162,10 @@ export default function Lending() {
           placeholder="Amount to deposit"
           value={depositAmount}
           onChange={(e) => setDepositAmount(e.target.value)}
+          className="p-2 rounded text-white placeholder-white bg-gray-800"
         />
         <button
+          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
           onClick={handleDeposit}
           disabled={!account || !ready || !usdcReady || depositing.isDepositing}
         >
@@ -184,9 +176,9 @@ export default function Lending() {
         {depositing.error && <p>❌ Error: {depositing.error}</p>}
       </div>
 
-      {/* ---------------- USDC Withdraw ---------------- */}
-      <div className="withdraw-section">
-        <h3>Withdraw USDC</h3>
+      {/* Withdraw Card */}
+      <div className="card bg-gray-700 text-white p-4 rounded-xl shadow-md flex flex-col gap-2">
+        <h3 className="font-semibold">Withdraw USDC</h3>
         <input
           type="number"
           step="0.000000000000000001"
@@ -194,8 +186,10 @@ export default function Lending() {
           placeholder="Amount to withdraw"
           value={withdrawAmount}
           onChange={(e) => setWithdrawAmount(e.target.value)}
+          className="p-2 rounded text-white placeholder-white bg-gray-800"
         />
         <button
+          className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded"
           onClick={handleWithdraw}
           disabled={!account || !ready || withdrawing.isWithdrawing}
         >
@@ -206,10 +200,14 @@ export default function Lending() {
         {withdrawing.error && <p>❌ Error: {withdrawing.error}</p>}
       </div>
 
-      {/* ---------------- Borrow Using NFT ---------------- */}
-      <div className="borrow-section">
-        <h3>Borrow USDC using NFT</h3>
-        <select value={selectedNFT} onChange={(e) => setSelectedNFT(e.target.value)}>
+      {/* Borrow Card */}
+      <div className="card bg-gray-700 text-white p-4 rounded-xl shadow-md flex flex-col gap-2">
+        <h3 className="font-semibold">Borrow USDC using NFT</h3>
+        <select
+          value={selectedNFT}
+          onChange={(e) => setSelectedNFT(e.target.value)}
+          className="p-2 rounded text-white placeholder-white bg-gray-800"
+        >
           <option value="">Select NFT</option>
           {userNFTs.map((nft) => (
             <option key={nft.tokenId} value={nft.tokenId}>
@@ -217,7 +215,11 @@ export default function Lending() {
             </option>
           ))}
         </select>
-        <button onClick={handleBorrow} disabled={!selectedNFT || !account || !lendingContract}>
+        <button
+          className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
+          onClick={handleBorrow}
+          disabled={!selectedNFT || !account || !lendingContract}
+        >
           Borrow USDC
         </button>
         {borrowing?.isBorrowing && <p>Processing borrow...</p>}
@@ -227,30 +229,33 @@ export default function Lending() {
         {borrowing?.error && <p>❌ Error: {borrowing.error}</p>}
       </div>
 
-      {/* ---------------- Active Loans + Repayment ---------------- */}
-      <div className="loans-section">
-        <h3>Your Active Loans</h3>
+      {/* Active Loans Card */}
+      <div className="card bg-gray-700 text-white p-4 rounded-xl shadow-md">
+        <h3 className="font-semibold mb-2">Your Active Loans</h3>
         {loans && Object.keys(loans).length > 0 ? (
-          <table>
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr>
-                <th>NFT</th>
-                <th>Borrowed</th>
-                <th>Repayment</th>
-                <th>Status</th>
-                <th>Action</th>
+              <tr className="border-b border-gray-500">
+                <th className="p-2">NFT</th>
+                <th className="p-2">Borrowed</th>
+                <th className="p-2">Repayment</th>
+                <th className="p-2">Status</th>
+                <th className="p-2">Action</th>
               </tr>
             </thead>
             <tbody>
               {Object.entries(loans).map(([nftId, loan]) => (
-                <tr key={nftId}>
-                  <td>#{nftId}</td>
-                  <td>{ethers.utils.formatUnits(loan.borrowedAmount, 18)} USDC</td>
-                  <td>{ethers.utils.formatUnits(loan.repayment, 18)} USDC</td>
-                  <td>{loan.repaid ? "✅ Repaid" : "⏳ Active"}</td>
-                  <td>
+                <tr key={nftId} className="border-b border-gray-600">
+                  <td className="p-2">#{nftId}</td>
+                  <td className="p-2">{ethers.utils.formatUnits(loan.borrowedAmount, 18)} USDC</td>
+                  <td className="p-2">{ethers.utils.formatUnits(loan.repayment, 18)} USDC</td>
+                  <td className="p-2">{loan.repaid ? "✅ Repaid" : "⏳ Active"}</td>
+                  <td className="p-2">
                     {!loan.repaid && (
-                      <button onClick={() => handleRepay({ ...loan, nftId })}>
+                      <button
+                        className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded"
+                        onClick={() => handleRepay({ ...loan, nftId })}
+                      >
                         Repay
                       </button>
                     )}

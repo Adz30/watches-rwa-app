@@ -9,10 +9,10 @@ const oracleAbi = require("../frontend/src/abi/Oracle.json");
 // Hardcode network params
 const networkUrl = "http://127.0.0.1:8545"; // localhost Hardhat
 const oracleAddress = config["31337"].oracle.address;
-const nftId = 1; // example NFT
+const nftId = 2; // example NFT
 
 // ✅ In ethers v6, use bigint
-const priceWei = 11550000000000000000000n; // £11,750 in wei
+const priceWei = 21550000000000000000000n; // £11,750 in wei
 
 async function main() {
   console.log("Oracle address:", oracleAddress);

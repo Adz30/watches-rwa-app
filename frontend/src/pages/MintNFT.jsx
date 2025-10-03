@@ -1,13 +1,6 @@
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
-import {
-  Card,
-  CardHeader,
-  CardBody,
-  Button,
-  Input,
-  Spinner,
-} from "@material-tailwind/react";
+import { Card, CardHeader, CardBody, Button, Spinner, Input } from "@material-tailwind/react";
 import { FaPlus } from "react-icons/fa";
 import { uploadMetadataToIPFS, mintWatchNFT } from "../lib/interactions";
 
@@ -25,7 +18,9 @@ export default function MintNFT() {
   const [txHash, setTxHash] = useState("");
 
   if (!watchNFT) {
-    return <p className="text-center mt-10">Loading contracts...</p>;
+    return (
+      <p className="text-zinc-500 text-center mt-10">Loading contracts...</p>
+    );
   }
 
   const handleMint = async () => {
@@ -36,20 +31,16 @@ export default function MintNFT() {
 
     setLoading(true);
     try {
-      // 1️⃣ Upload image to IPFS if not hosted
       let imageUri = image;
       if (image && !image.startsWith("ipfs://") && !image.startsWith("http")) {
         const fileData = await fetch(image).then((res) => res.blob());
         const file = new File([fileData], `${brand}-${model}.png`, {
           type: fileData.type,
         });
-
-        // TODO: implement this helper to upload file to IPFS
-        const imageUpload = await uploadFileToIPFS(file);
+        const imageUpload = await uploadFileToIPFS(file); // implement this helper
         imageUri = `ipfs://${imageUpload.cid}`;
       }
 
-      // 2️⃣ Build ERC721 metadata
       const metadata = {
         name: `${brand} ${model} ${modelNumber} (${year})`,
         description: `Luxury ${brand} ${model} watch NFT, model number ${modelNumber}, minted in ${year}.`,
@@ -62,11 +53,9 @@ export default function MintNFT() {
         ],
       };
 
-      // 3️⃣ Upload metadata to IPFS
       const metadataUri = await uploadMetadataToIPFS(metadata);
       setIpfsURI(metadataUri);
 
-      // 4️⃣ Mint NFT on-chain
       const tx = await mintWatchNFT(watchNFT, account, metadataUri);
       setTxHash(tx.hash);
 
@@ -81,31 +70,73 @@ export default function MintNFT() {
 
   return (
     <div className="p-6 max-w-md mx-auto">
-      <Card className="shadow-lg rounded-xl">
-        <CardHeader color="blue" className="flex items-center gap-4">
-          <FaPlus className="w-6 h-6" />
+      <Card className="card shadow-lg rounded-xl">
+        <CardHeader className="flex items-center gap-4 bg-blue-600 px-4 py-3 rounded-t-xl">
+          <FaPlus className="w-6 h-6 text-white" />
           <h2 className="text-white font-semibold">Mint Watch NFT</h2>
         </CardHeader>
+
         <CardBody className="flex flex-col gap-4">
-          <p className="text-gray-700 text-sm">
+          <p className="text-zinc-900 dark:text-white text-sm">
             Connected Wallet: {account || "Not connected"}
           </p>
 
-          <Input label="Brand" value={brand} onChange={(e) => setBrand(e.target.value)} />
-          <Input label="Model" value={model} onChange={(e) => setModel(e.target.value)} />
-          <Input label="Model Number" value={modelNumber} onChange={(e) => setModelNumber(e.target.value)} />
-          <Input label="Year" value={year} onChange={(e) => setYear(e.target.value)} />
-          <Input label="Image URL" value={image} onChange={(e) => setImage(e.target.value)} />
+          {/* === Inputs with labels above === */}
+          <div className="flex flex-col">
+            <label className="text-zinc-500 dark:text-white mb-1 text-sm">Brand</label>
+            <Input
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+              className="text-zinc-900 dark:text-white"
+            />
+          </div>
 
+          <div className="flex flex-col">
+            <label className="text-zinc-500 dark:text-white mb-1 text-sm">Model</label>
+            <Input
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="text-zinc-900 dark:text-white"
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <label className="text-zinc-500 dark:text-white mb-1 text-sm">Model Number</label>
+            <Input
+              value={modelNumber}
+              onChange={(e) => setModelNumber(e.target.value)}
+              className="text-zinc-900 dark:text-white"
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <label className="text-zinc-500 dark:text-white mb-1 text-sm">Year</label>
+            <Input
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              className="text-zinc-900 dark:text-white"
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <label className="text-zinc-500 dark:text-white mb-1 text-sm">Image URL</label>
+            <Input
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              className="text-zinc-900 dark:text-white"
+            />
+          </div>
+
+          {/* === Mint Button === */}
           <Button
-            color="blue"
+            className="button button-primary mt-2"
             onClick={handleMint}
             disabled={loading}
-            className="mt-2"
           >
             {loading ? <Spinner className="h-4 w-4" /> : "Mint NFT"}
           </Button>
 
+          {/* === Feedback === */}
           {ipfsURI && (
             <p className="text-xs text-green-600 break-all">
               ✅ IPFS URI:{" "}

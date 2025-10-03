@@ -8,6 +8,7 @@ import Lending from "./pages/Lending";
 import AMM from "./pages/AMM";
 import Fractionalizer from "./pages/Fractionalizer";
 import MintNFT from "./pages/MintNFT";
+import TradingHub from "./pages/TradingHub";
 
 import { setLoading } from "./redux/reducers/watchNftSlice";
 import { setLoan } from "./redux/reducers/lendingSlice";
@@ -175,13 +176,15 @@ export default function App() {
   }
 
   return (
-    <div>
+   
+    <div className="min-h-screen bg-background text-foreground">
       <Navigation />
       <main className="p-4 max-w-6xl mx-auto">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/mint" element={<MintNFT />} />
           <Route path="/lending" element={<Lending />} />
+          <Route path="/tradinghub" element={<TradingHub />} />
           <Route path="/amm" element={<AMM />} />
           <Route path="/fractionalizer" element={<Fractionalizer />} />
         </Routes>
